@@ -68,6 +68,69 @@ std::vector<Trecho> prim(const Grafo& g, Criterio c) {
     return arvore;
 }
 
+
+// Encontra a melhor rota visitando todas as cidades uma única vez.
+std::vector<Trecho> rotaOtimizada(const Grafo& g, int origem, Criterio c) {
+
+    std::vector<Trecho> melhorRota;
+    std::vector<Trecho> rotaAtual;
+
+    std::vector<bool> visitado(g.tamanho(), false);
+
+    double menorTotal = std::numeric_limits<double>::infinity();
+
+    visitado.at(origem) = true;
+
+    // Testa todas as possibilidades de sequência de cidades.
+    std::function<void(int, double)> buscar =
+        [&](int atual, double total) {
+
+        // Se todas as cidades foram visitadas, verifica o resultado.
+        if (static_cast<int>(rotaAtual.size()) == g.tamanho() - 1) {
+
+            if (total < menorTotal) {
+                menorTotal = total;
+                melhorRota = rotaAtual;
+            }
+
+            return;
+        }
+
+        // Tenta visitar cada cidade ainda não visitada.
+        for (int destino = 0; destino < g.tamanho(); ++destino) {
+
+            if (visitado[destino]) continue;
+
+            const Pesos* pesos = g.obterPeso(atual, destino);
+
+            if (!pesos) continue;
+
+            double peso = valor(*pesos, c);
+
+            // Marca a cidade como visitada.
+            visitado[destino] = true;
+
+            rotaAtual.push_back({atual, destino});
+
+            // Continua a busca pela próxima cidade.
+            buscar(destino, total + peso);
+
+            // Desfaz a escolha para testar outra sequência.
+            rotaAtual.pop_back();
+
+            visitado[destino] = false;
+        }
+    };
+
+    buscar(origem, 0.0);
+
+    if (melhorRota.empty() && g.tamanho() > 1) {
+        throw std::runtime_error("Nao foi possivel encontrar uma rota completa.");
+    }
+
+    return melhorRota;
+}
+
 // Soma custo, distância e duração dos trechos de uma rota ou árvore.
 Pesos somar(const Grafo& g, const std::vector<Trecho>& trechos) {
     Pesos total{};
